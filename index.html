@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      name="description"
+      content="Equal Token C 端：查询余额与用量、充值、配置 Codex、Workbuddy、Claude Code、OpenClaw 和 Hermes。"
+    />
+    <title>Equal Token · C 端</title>
+    <link rel="icon" href="./assets/brand/equal-token-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" id="appShell">
+      <header class="topbar">
+        <a class="brand" href="#query" aria-label="Equal Token C 端首页">
+          <img src="./assets/brand/equal-token-mark.svg" alt="" />
+          <span class="brand-copy">
+            <strong>Equal Token</strong>
+            <small>AI GATEWAY INFRASTRUCTURE</small>
+          </span>
+        </a>
+
+        <div class="session-bar" aria-label="当前 API Key 状态">
+          <button class="session-key-button" type="button" id="changeKeyBtn" aria-label="输入 API Key">
+            <span class="session-key-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M14 8a4 4 0 1 0-2.6 3.75L17 17.4V20h3v-3h-3" />
+                <path d="M7 8h.01" />
+              </svg>
+            </span>
+            <span class="session-key" id="sessionKey">未配置 API Key</span>
+            <span class="session-key-action">输入 Key</span>
+          </button>
+        </div>
+
+        <nav class="primary-nav" aria-label="C 端主导航">
+          <button class="nav-tab is-active" type="button" data-view="query">查询</button>
+          <button class="nav-tab" type="button" data-view="recharge">充值</button>
+          <button class="nav-tab" type="button" data-view="config">配置</button>
+          <button class="nav-tab nav-tab--apply" type="button" data-view="apply">申请 Key</button>
+        </nav>
+      </header>
+
+      <main class="main">
+        <section class="view is-active" id="query" data-view-panel="query">
+          <header class="page-head">
+            <div>
+              <p class="context-label">C 端 / 查询</p>
+              <h1>余额与用量明细</h1>
+              <p>输入 API Key 后查看余额、调用明细和结算状态。</p>
+            </div>
+            <div class="page-actions">
+              <button class="button" type="button" id="refreshQuery">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+                  <path d="M20 4v7h-7" />
+                </svg>
+                刷新
+              </button>
+              <button class="button button--primary" type="button" id="exportUsage">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 4v10" />
+                  <path d="m8 10 4 4 4-4" />
+                  <path d="M5 20h14" />
+                </svg>
+                导出 CSV
+              </button>
+            </div>
+          </header>
+
+          <div id="queryContent">
+            <section class="summary-grid" aria-label="账户摘要">
+              <article class="balance-card">
+                <div class="balance-card__head">
+                  <span class="label">可用余额</span>
+                  <span class="status-pill status-pill--ok" id="balanceStatus">正常</span>
+                </div>
+                <strong id="balanceValue">$0.00</strong>
+                <div class="balance-meter" aria-hidden="true"><span id="balanceMeter"></span></div>
+                <p id="balanceCaption">总额度 $0.00 · 剩余 0%</p>
+              </article>
+
+              <dl class="metric-list">
+                <div>
+                  <dt>累计已用</dt>
+                  <dd id="totalSpent">$0.00</dd>
+                </div>
+                <div>
+                  <dt>本月已用</dt>
+                  <dd id="monthSpent">$0.00</dd>
+                </div>
+                <div>
+                  <dt>今日已用</dt>
+                  <dd id="todaySpent">$0.00</dd>
+                </div>
+                <div>
+                  <dt>有效期</dt>
+                  <dd id="validUntil">--</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="panel usage-panel">
+              <div class="panel-head panel-head--stackable">
+                <div>
+                  <h2>调用明细</h2>
+                  <p id="usageMeta">--</p>
+                </div>
+                <div class="filter-row">
+                  <div class="segmented" id="rangeFilter" role="group" aria-label="时间范围">
+                    <button class="is-active" type="button" data-range="today">今日</button>
+                    <button type="button" data-range="month">本月</button>
+                    <button type="button" data-range="all">全部</button>
+                  </div>
+                  <label class="field field--compact">
+                    <span>模型</span>
+                    <select id="modelFilter">
+                      <option value="all">全部模型</option>
+                    </select>
+                  </label>
+                  <label class="field field--compact">
+                    <span>状态</span>
+                    <select id="statusFilter">
+                      <option value="all">全部状态</option>
+                      <option value="success">成功</option>
+                      <option value="failed">失败</option>
+                    </select>
+                  </label>
+                  <label class="field field--search">
+                    <span>请求 ID</span>
+                    <input id="searchFilter" type="search" placeholder="搜索 request id" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">时间</th>
+                      <th scope="col">模型</th>
+                      <th scope="col">请求 ID</th>
+                      <th scope="col" class="num">输入 Token</th>
+                      <th scope="col" class="num">输出 Token</th>
+                      <th scope="col" class="num">总 Token</th>
+                      <th scope="col" class="num">消耗金额</th>
+                      <th scope="col">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageRows"></tbody>
+                </table>
+                <div class="empty-state" id="usageEmpty" hidden>
+                  <strong>没有匹配的调用记录</strong>
+                  <span>调整筛选条件或切换时间范围后再试。</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="recharge" data-view-panel="recharge">
+          <header class="page-head">
+            <div>
+              <p class="context-label">C 端 / 充值</p>
+              <h1>充值中心</h1>
+              <p>选择金额生成充值订单，完成付款后提交交易单号或付款凭证，等待运营确认到账。</p>
+            </div>
+          </header>
+
+          <div class="recharge-layout" id="rechargeContent">
+            <section class="panel recharge-order">
+              <div class="panel-head">
+                <div>
+                  <h2>创建充值订单</h2>
+                  <p>选择金额后生成订单号，再扫描企业收款码完成付款。</p>
+                </div>
+                <span class="status-pill status-pill--info" id="rechargeBalance">余额 --</span>
+              </div>
+
+              <div class="amount-grid" id="amountGrid" role="group" aria-label="快捷充值金额">
+                <button type="button" data-amount="10">¥10</button>
+                <button type="button" data-amount="50">¥50</button>
+                <button type="button" data-amount="100">¥100</button>
+                <button type="button" data-amount="200">¥200</button>
+                <button type="button" data-amount="500">¥500</button>
+              </div>
+
+              <label class="field">
+                <span>自定义金额</span>
+                <input id="customAmount" type="number" min="1" step="1" placeholder="输入充值金额，例如 100" />
+              </label>
+
+              <button class="button button--primary button--wide" type="button" id="createOrder">生成充值订单</button>
+
+              <div class="order-detail" id="orderDetail" hidden>
+                <dl class="order-meta">
+                  <div><dt>订单号</dt><dd id="orderNumber">--</dd></div>
+                  <div><dt>充值金额</dt><dd id="orderAmount">--</dd></div>
+                  <div><dt>订单状态</dt><dd id="orderStatus">--</dd></div>
+                </dl>
+
+                <div class="qr-placeholder" id="qrPlaceholder">
+                  <span class="qr-placeholder__frame" aria-hidden="true"></span>
+                  <strong>企业收款码</strong>
+                  <small>运营端配置收款码后在此展示。当前为前端演示占位。</small>
+                </div>
+
+                <form class="proof-form" id="proofForm">
+                  <label class="field">
+                    <span>交易单号</span>
+                    <input id="transactionId" type="text" placeholder="填写付款交易单号" autocomplete="off" />
+                  </label>
+                  <label class="field">
+                    <span>付款凭证</span>
+                    <input id="paymentProof" type="file" accept="image/*,.pdf" />
+                  </label>
+                  <button class="button" type="submit">提交付款信息</button>
+                </form>
+              </div>
+            </section>
+
+            <section class="panel recharge-history">
+              <div class="panel-head">
+                <div>
+                  <h2>充值记录</h2>
+                  <p>充值审核和到账状态会同步更新。</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table data-table--compact">
+                  <thead>
+                    <tr>
+                      <th scope="col">订单号</th>
+                      <th scope="col" class="num">金额</th>
+                      <th scope="col">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody id="orderRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="config" data-view-panel="config">
+          <header class="page-head">
+            <div>
+              <p class="context-label">C 端 / 配置</p>
+              <h1>配置手册</h1>
+              <p>复制 Base URL 和 API Key，按对应客户端设置 OpenAI 兼容接口。</p>
+            </div>
+          </header>
+
+          <div id="configContent">
+            <section class="credential-strip" aria-label="当前接入信息">
+              <div class="credential-row">
+                <span>Base URL</span>
+                <code id="baseUrlText">https://api.equaltoken.com/v1</code>
+                <button class="button button--small" type="button" data-copy-target="#baseUrlText">复制</button>
+              </div>
+              <div class="credential-row">
+                <span>API Key</span>
+                <code id="configKeyText">未设置</code>
+                <button class="button button--small" type="button" id="toggleKeyVisibility">显示</button>
+                <button class="button button--small" type="button" data-copy-target="#configKeyText">复制</button>
+              </div>
+              <div class="credential-row credential-row--test">
+                <span>连接测试</span>
+                <p id="testResult" role="status">尚未测试。未选模型时仅验证接口连通；选择模型后会发送一次极小的真实请求。</p>
+                <select id="testModel" aria-label="选择测试模型">
+                  <option value="">加载模型列表...</option>
+                </select>
+                <button class="button button--small button--primary" type="button" id="testConnection">测试当前配置</button>
+              </div>
+            </section>
+
+            <div class="guide-layout">
+              <nav class="guide-tabs" id="guideTabs" aria-label="配置工具"></nav>
+              <article class="guide-panel" id="guidePanel" aria-live="polite"></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="apply" data-view-panel="apply">
+          <header class="page-head">
+            <div>
+              <p class="context-label">C 端 / 申请</p>
+              <h1>申请 API Key</h1>
+              <p>填写联系方式和用途，运营会尽快联系你并发放 Key。</p>
+            </div>
+          </header>
+
+          <section class="panel apply-panel">
+            <div class="panel-head">
+              <div>
+                <h2>申请信息</h2>
+                <p>提交后可以直接添加运营微信，也可以等待运营回访。</p>
+              </div>
+            </div>
+
+            <form class="apply-form" id="keyApplicationForm">
+              <div class="form-grid">
+                <label class="field">
+                  <span>称呼</span>
+                  <input id="applyName" name="name" type="text" placeholder="怎么称呼你" autocomplete="name" required />
+                </label>
+                <label class="field">
+                  <span>联系方式</span>
+                  <input id="applyContact" name="contact" type="text" placeholder="微信号 / 手机号 / 邮箱" required />
+                </label>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span>使用场景</span>
+                  <select id="applyScene" name="scene">
+                    <option value="个人开发">个人开发</option>
+                    <option value="团队协作">团队协作</option>
+                    <option value="企业接入">企业接入</option>
+                    <option value="其他">其他</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>预计用量</span>
+                  <select id="applyUsage" name="usage">
+                    <option value="先试用">先试用</option>
+                    <option value="少量持续">少量持续</option>
+                    <option value="较高并发">较高并发</option>
+                    <option value="企业级">企业级</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span>备注</span>
+                <textarea id="applyNote" name="note" rows="4" placeholder="想接入的客户端、模型或使用场景（选填）"></textarea>
+              </label>
+              <div class="key-dialog__actions">
+                <button class="button" type="button" data-view="query">返回查询</button>
+                <button class="button button--primary" type="submit" id="applySubmit">提交申请</button>
+              </div>
+            </form>
+
+            <div class="apply-success" id="applySuccess" hidden>
+              <span class="apply-success__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" />
+                  <path d="m8.5 12.2 2.3 2.3 4.7-5" />
+                </svg>
+              </span>
+              <h3>申请已提交</h3>
+              <p>运营会尽快联系你。也可以直接扫码添加运营微信，发送你的称呼和联系方式。</p>
+              <div class="apply-contact">
+                <div class="qr-placeholder qr-placeholder--small">
+                  <span class="qr-placeholder__frame" aria-hidden="true"></span>
+                  <strong>运营微信</strong>
+                  <small>配置企业微信后在此展示</small>
+                </div>
+                <div class="apply-contact__meta">
+                  <span>运营微信</span>
+                  <code id="supportWeChat">equaltoken-support</code>
+                  <button class="button button--small" type="button" data-copy-target="#supportWeChat">复制微信号</button>
+                </div>
+              </div>
+              <div class="key-dialog__actions">
+                <button class="button" type="button" data-view="query">返回查询</button>
+                <button class="button button--primary" type="button" id="resetApplyForm">重新填写</button>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+
+    </div>
+
+    <dialog class="key-dialog" id="keyDialog">
+      <div class="key-dialog__panel">
+        <div class="key-dialog__head">
+          <div>
+            <h2>输入 API Key</h2>
+            <p>Key 只用于当前浏览器会话，不写入 URL。</p>
+          </div>
+          <button class="key-dialog__close" type="button" id="closeKeyDialog" aria-label="关闭">×</button>
+        </div>
+
+        <form class="key-dialog__form" id="keyDialogForm">
+          <label class="field">
+            <span>API Key</span>
+            <input
+              id="apiKeyInput"
+              name="apiKey"
+              type="password"
+              placeholder="sk-..."
+              autocomplete="off"
+              spellcheck="false"
+              required
+            />
+          </label>
+          <div class="key-dialog__actions">
+            <button class="button" type="button" id="clearKeyBtn">清除</button>
+            <button class="button button--primary" type="submit" id="keySubmit">保存并刷新</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script>
+      // C 端运行配置（部署时按需调整）
+      // BFF 托管本页面时走同源；页面单独部署时改成 BFF 域名；
+      // 直接以 file:// 打开时回退为直连 new-api 模式。
+      window.EQUAL_TOKEN_C_BFF_ORIGIN = window.location.origin.startsWith("http")
+        ? window.location.origin
+        : "";
+      // 充值 / 申请 Key 本版本暂不放开，需要时改为 true
+      // window.EQUAL_TOKEN_C_ENABLE_RECHARGE = true;
+      // window.EQUAL_TOKEN_C_ENABLE_APPLY = true;
+    </script>
+    <script src="./app.js"></script>
+  </body>
+</html>

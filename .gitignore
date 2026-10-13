@@ -1,0 +1,12 @@
+# 环境变量与密钥（含 root 访问令牌，严禁提交）
+bff/.env
+.env
+*.local
+
+# 临时文件
+.tmp/
+__MACOSX/
+
+# 依赖与构建产物
+node_modules/
+dist/

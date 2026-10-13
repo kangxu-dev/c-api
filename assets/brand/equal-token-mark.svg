@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Equal Token mark</title>
+  <desc id="desc">A rounded token mark with an equal sign forming two gateway rails.</desc>
+  <defs>
+    <linearGradient id="tokenFill" x1="38" y1="24" x2="218" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#19D5FF"/>
+      <stop offset="0.48" stop-color="#126DFF"/>
+      <stop offset="1" stop-color="#5F4BFF"/>
+    </linearGradient>
+    <linearGradient id="railFill" x1="72" y1="88" x2="184" y2="168" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FCFF"/>
+      <stop offset="1" stop-color="#B7F4FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#126DFF" flood-opacity="0.28"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#19D5FF" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect x="28" y="28" width="200" height="200" rx="52" fill="#071221"/>
+  <path d="M80 28h96c28.719 0 52 23.281 52 52v96c0 28.719-23.281 52-52 52H80c-28.719 0-52-23.281-52-52V80c0-28.719 23.281-52 52-52Z" fill="url(#tokenFill)" filter="url(#softGlow)"/>
+  <path d="M72 94c0-8.837 7.163-16 16-16h96v34H88c-8.837 0-16-7.163-16-16v-2Z" fill="url(#railFill)"/>
+  <path d="M184 178H88c-8.837 0-16-7.163-16-16v-2c0-8.837 7.163-16 16-16h96v34Z" fill="url(#railFill)"/>
+  <path d="M184 78l24 17-24 17V78Z" fill="#071221" fill-opacity="0.92"/>
+  <path d="M72 144l-24 17 24 17v-34Z" fill="#071221" fill-opacity="0.92"/>
+  <path d="M84 42h88c23.196 0 42 18.804 42 42v88" fill="none" stroke="#FFFFFF" stroke-opacity="0.24" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,13 @@
+{
+  "name": "equaltoken-c-bff",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Equal Token C 端 BFF：代理 new-api Key 只读接口，服务端完成分组倍率换算",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
