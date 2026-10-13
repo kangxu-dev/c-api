@@ -1,8 +1,6 @@
 (() => {
   "use strict";
 
-  // new-api 站点根路径：/api/* 与 /v1/* 同源挂在根路径下，
-  // 可通过 window.EQUAL_TOKEN_C_API_ORIGIN 单独覆盖。
   const apiOrigin = (
     window.EQUAL_TOKEN_C_API_ORIGIN ||
     (window.EQUAL_TOKEN_C_BASE_URL || "https://equaltoken.top").replace(/\/v1\/?$/, "")
@@ -21,10 +19,7 @@
     },
     defaultModel: window.EQUAL_TOKEN_C_MODEL || "gpt-5.6-sol",
     supportWeChat: window.EQUAL_TOKEN_C_SUPPORT_WECHAT || "equaltoken-support",
-    // new-api 额度换算：QuotaPerUnit（默认 500000）= 1 美元
     quotaPerUnit: Number(window.EQUAL_TOKEN_C_QUOTA_PER_UNIT) || 500000,
-    // 展示倍率：仅直连模式（未配置 BFF）时生效，所有展示金额统一除以该倍率。
-    // BFF 模式下换算在服务端完成，前端不再做二次换算。
     displayRatio: (() => {
       const value = Number(window.EQUAL_TOKEN_C_DISPLAY_RATIO);
       return Number.isFinite(value) && value > 0 ? value : 1;
@@ -131,9 +126,6 @@
   let toastTimer = 0;
   let searchTimer = 0;
 
-  // new-api 额度 → 展示金额：先按 QuotaPerUnit 换算成美元，再除以展示倍率。
-  // 全站金额统一走此函数，保证「总额度 - 累计已用 = 余额」口径一致；
-  // 精度对齐 BFF（最多 6 位小数）。
   function quotaToUsd(quota) {
     return Number((Number(quota || 0) / CONFIG.quotaPerUnit / CONFIG.displayRatio).toFixed(6));
   }
@@ -165,8 +157,6 @@
     }, 0);
   }
 
-  // 由 /api/usage/token/ 的返回 + 调用明细聚合出账户摘要。
-  // 今日/本月消费基于最近 1000 条日志（new-api MaxRecentItems 上限）估算。
   function buildAccount(tokenInfo, usage) {
     const unlimited = Boolean(tokenInfo.unlimited_quota);
     const expiresAt = Number(tokenInfo.expires_at || 0);
