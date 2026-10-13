@@ -6,14 +6,34 @@
 
 ## 部署
 
+### Docker 部署（推荐，单容器 = BFF + 静态页面）
+
 ```bash
+# 1. 在宿主机准备环境变量（密钥不进镜像）
 cd bff
-cp .env.example .env   # 按注释填写后
-set $(cat .env | xargs) # Linux/macOS 用 export 或 dotenv 工具；也可直接设环境变量
-node server.js         # 或 npm start
+cp .env.example .env    # 填写 NEW_API_BASE / ADMIN_PAT / ALLOWED_ORIGIN 等
+cd ..
+
+# 2. 构建并启动
+docker compose up -d --build
+
+# 3. 验证
+curl http://localhost:8787/healthz
 ```
 
-生产建议用 systemd / Docker / pm2 托管，反代到 `https://c-api.equaltoken.com` 之类的域名并加 HTTPS。
+- 镜像内不含任何密钥，`bff/.env` 由 compose 的 `env_file` 在运行时注入
+- 健康检查：容器内每 30s 请求一次 `/healthz`
+- 生产建议在容器前面加 Nginx/Caddy 反代提供 HTTPS，再把 `ALLOWED_ORIGIN` 配成页面最终域名
+- 修改代码后 `docker compose up -d --build` 重建即可
+
+### 裸机部署
+
+```bash
+cd bff
+node server.js   # 或用 pm2 / systemd 托管
+```
+
+生产建议反代到 `https://c-api.equaltoken.com` 之类的域名并加 HTTPS。
 
 ## 环境变量
 

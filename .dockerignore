@@ -1,0 +1,14 @@
+# 敏感文件绝不进镜像（部署时通过 compose 的 env_file 或环境变量注入）
+.env
+.env.*
+bff/.env
+bff/.env.*
+
+node_modules
+.tmp
+.git
+__MACOSX
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
