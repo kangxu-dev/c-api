@@ -266,7 +266,7 @@ async function handleSummary(key) {
 
   const logsResponse = await upstream("/api/log/token", key);
   const logs = Array.isArray(logsResponse.body?.data) ? logsResponse.body.data : [];
-  const { userId, group, ratio } = await resolveGroupRatio(logs);
+  const { ratio } = await resolveGroupRatio(logs);
 
   const { todayStart, monthStart, nowSec } = dayBoundaries();
   const expiresAt = Number(tokenInfo.expires_at || 0);
@@ -295,10 +295,9 @@ async function handleSummary(key) {
         month_spent: Number(monthSpent.toFixed(6)),
         today_spent: Number(todaySpent.toFixed(6)),
         expires_at: expiresAt,
-        status: expiresAt > 0 && expiresAt < nowSec ? "已过期" : "正常",
-        user_id: userId,
-        group,
-        display_ratio: ratio
+        status: expiresAt > 0 && expiresAt < nowSec ? "已过期" : "正常"
+        // 注意：不返回 group / user_id / display_ratio —— 分组与倍率是内部信息，
+        // 仅用于服务端换算，不向任何客户端暴露
       }
     }
   };
