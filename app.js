@@ -132,9 +132,10 @@
   let searchTimer = 0;
 
   // new-api 额度 → 展示金额：先按 QuotaPerUnit 换算成美元，再除以展示倍率。
-  // 全站金额统一走此函数，保证「总额度 - 累计已用 = 余额」口径一致。
+  // 全站金额统一走此函数，保证「总额度 - 累计已用 = 余额」口径一致；
+  // 精度对齐 BFF（最多 6 位小数）。
   function quotaToUsd(quota) {
-    return Number(quota || 0) / CONFIG.quotaPerUnit / CONFIG.displayRatio;
+    return Number((Number(quota || 0) / CONFIG.quotaPerUnit / CONFIG.displayRatio).toFixed(6));
   }
 
   // new-api 日志字段 → C 端展示字段。
@@ -197,6 +198,14 @@
 
   function formatMoney(value) {
     return `$${Number(value || 0).toFixed(2)}`;
+  }
+
+  // 单笔消耗：保留接口返回的原始精度（BFF 最多 6 位小数），
+  // 避免小额消耗被格式化成 $0.00
+  function formatCost(value) {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num)) return "$0";
+    return `$${num}`;
   }
 
   function displayMoney(value) {
@@ -423,7 +432,7 @@
             <td class="num">${formatNumber(item.input)}</td>
             <td class="num">${formatNumber(item.output)}</td>
             <td class="num">${formatNumber(item.total)}</td>
-            <td class="num">${formatMoney(item.cost)}</td>
+            <td class="num">${formatCost(item.cost)}</td>
             <td><span class="status-pill ${statusClass(item.status)}">${statusLabel(item.status)}</span></td>
           </tr>
         `
