@@ -138,7 +138,11 @@ async function upstream(path, key, usePat = false) {
     } catch {
       // 非 JSON 响应时保持 body 为 null
     }
-    return { status: response.status, body };
+    return {
+      status: response.status,
+      body,
+      retryAfter: response.headers.get("retry-after")
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -259,12 +263,24 @@ async function handleSummary(key) {
   if (usage.status === 401 || usage.status === 403) {
     return { status: 401, body: { success: false, message: "API Key 无效、已禁用或用户已被封禁" } };
   }
+  if (usage.status === 429) {
+    return { status: 429, retryAfter: usage.retryAfter, body: { success: false, message: "上游请求过于频繁，请稍后重试" } };
+  }
   if (usage.status !== 200 || !usage.body?.data) {
     return { status: 502, body: { success: false, message: "new-api 接口异常" } };
   }
   const tokenInfo = usage.body.data;
 
   const logsResponse = await upstream("/api/log/token", key);
+  if (logsResponse.status === 401 || logsResponse.status === 403) {
+    return { status: 401, body: { success: false, message: "API Key 无效、已禁用或用户已被封禁" } };
+  }
+  if (logsResponse.status === 429) {
+    return { status: 429, retryAfter: logsResponse.retryAfter, body: { success: false, message: "上游请求过于频繁，请稍后重试" } };
+  }
+  if (logsResponse.status !== 200) {
+    return { status: 502, body: { success: false, message: "new-api 接口异常" } };
+  }
   const logs = Array.isArray(logsResponse.body?.data) ? logsResponse.body.data : [];
   const { ratio } = await resolveGroupRatio(logs);
 
@@ -282,6 +298,7 @@ async function handleSummary(key) {
     if (ts >= monthStart) monthSpent += cost;
     if (ts >= todayStart) todaySpent += cost;
   }
+  const records = logs.filter(isDisplayLog).map((log) => mapLogRecord(log, ratio));
 
   return {
     status: 200,
@@ -295,7 +312,8 @@ async function handleSummary(key) {
         month_spent: Number(monthSpent.toFixed(6)),
         today_spent: Number(todaySpent.toFixed(6)),
         expires_at: expiresAt,
-        status: expiresAt > 0 && expiresAt < nowSec ? "已过期" : "正常"
+        status: expiresAt > 0 && expiresAt < nowSec ? "已过期" : "正常",
+        records
         // 注意：不返回 group / user_id / display_ratio —— 分组与倍率是内部信息，
         // 仅用于服务端换算，不向任何客户端暴露
       }
@@ -307,6 +325,9 @@ async function handleLogs(key) {
   const logsResponse = await upstream("/api/log/token", key);
   if (logsResponse.status === 401 || logsResponse.status === 403) {
     return { status: 401, body: { success: false, message: "API Key 无效、已禁用或用户已被封禁" } };
+  }
+  if (logsResponse.status === 429) {
+    return { status: 429, retryAfter: logsResponse.retryAfter, body: { success: false, message: "上游请求过于频繁，请稍后重试" } };
   }
   if (logsResponse.status !== 200) {
     return { status: 502, body: { success: false, message: "new-api 接口异常" } };
@@ -430,6 +451,7 @@ const server = http.createServer(async (req, res) => {
     } else {
       result = { status: 404, body: { success: false, message: "Not Found" } };
     }
+    if (result.retryAfter) res.setHeader("Retry-After", result.retryAfter);
     json(res, result.status, result.body);
     console.log(`[bff] ${pathname} key=${maskKey(key)} → ${result.status}`);
   } catch (error) {

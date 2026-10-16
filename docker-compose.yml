@@ -10,3 +10,12 @@ services:
     # 由 compose 注入容器环境变量
     env_file:
       - bff/.env
+    networks:
+      default:
+        ipv4_address: 172.20.0.2
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

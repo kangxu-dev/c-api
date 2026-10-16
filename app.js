@@ -28,7 +28,6 @@
     api: {
       // BFF 模式接口（推荐）
       bffSummary: "/api/c/account/summary",
-      bffLogs: "/api/c/usage/logs",
       // 直连模式：sk- Key 可直调的只读接口（TokenAuthReadOnly，new-api 原生支持 CORS）
       tokenUsage: "/api/usage/token/",
       tokenLogs: "/api/log/token",
@@ -277,7 +276,18 @@
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      let message = `HTTP ${response.status}`;
+      try {
+        const payload = await response.json();
+        if (payload?.message) message = payload.message;
+      } catch {
+        // Keep the HTTP status when the error response is not JSON.
+      }
+      const retryAfter = Number(response.headers.get("retry-after"));
+      if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+        message += `（${retryAfter} 秒后重试）`;
+      }
+      throw new Error(message);
     }
 
     return response.json();
@@ -684,25 +694,17 @@ hermes config set model.default ${model}`;
     return data.data;
   }
 
-  async function fetchUsageBff() {
-    try {
-      const data = await apiRequest(`${CONFIG.bffOrigin}${CONFIG.api.bffLogs}`, { method: "GET" });
-      const records = Array.isArray(data?.data?.records) ? data.data.records : [];
-      state.usageError = "";
-      return records.map((record) => ({
-        id: record.id,
-        createdAt: record.created_at || "",
-        model: record.model || "--",
-        input: Number(record.input || 0),
-        output: Number(record.output || 0),
-        total: Number(record.total ?? Number(record.input || 0) + Number(record.output || 0)),
-        cost: Number(record.cost || 0),
-        status: record.status === "failed" ? "failed" : "success"
-      }));
-    } catch (error) {
-      state.usageError = String(error.message || "网络错误");
-      return [];
-    }
+  function normalizeBffUsage(records) {
+    return (Array.isArray(records) ? records : []).map((record) => ({
+      id: record.id,
+      createdAt: record.created_at || "",
+      model: record.model || "--",
+      input: Number(record.input || 0),
+      output: Number(record.output || 0),
+      total: Number(record.total ?? Number(record.input || 0) + Number(record.output || 0)),
+      cost: Number(record.cost || 0),
+      status: record.status === "failed" ? "failed" : "success"
+    }));
   }
 
   function normalizeBffAccount(data) {
@@ -722,9 +724,12 @@ hermes config set model.default ${model}`;
   // 统一的数据加载入口：优先 BFF，未配置 BFF 时回退直连 new-api
   async function loadAccountData() {
     if (CONFIG.bffOrigin) {
-      const account = await fetchAccountBff();
-      const usage = await fetchUsageBff();
-      return { account: normalizeBffAccount(account), usage };
+      const response = await fetchAccountBff();
+      state.usageError = "";
+      return {
+        account: normalizeBffAccount(response),
+        usage: normalizeBffUsage(response.records)
+      };
     }
     const tokenInfo = await fetchTokenInfo();
     const usage = await fetchUsage();
